@@ -1,0 +1,8 @@
+<resources>
+    <string name="app_name">Popular Movies Stage One</string>
+
+    <string name="error_message">Network connection error! Please, try again later</string>
+
+    <string name="popular_movies">most popular</string>
+    <string name="top_rated_movies">top rated</string>
+</resources>
