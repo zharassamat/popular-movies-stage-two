@@ -1,8 +1,19 @@
 <resources>
-    <string name="app_name">Popular Movies Stage One</string>
+    <string name="app_name">Popular Movies Stage Two</string>
 
     <string name="error_message">Network connection error! Please, try again later</string>
 
     <string name="popular_movies">most popular</string>
     <string name="top_rated_movies">top rated</string>
+    <string name="favorite_movies">favorite movies</string>
+
+    <string name="trailers_label">Trailers:</string>
+    <string name="video_is_not_available">Sorry, but trailers currently not available</string>
+    <string name="show_reviews">show reviews</string>
+    <string name="reviews">Reviews</string>
+    <string name="details">Details</string>
+    <string name="show_in_web">Show in web:</string>
+
+    <string name="action_share">Share trailer url</string>
+
 </resources>

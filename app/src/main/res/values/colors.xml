@@ -3,4 +3,9 @@
     <color name="colorPrimary">#212121</color>
     <color name="colorPrimaryDark">#000000</color>
     <color name="colorAccent">#FF4081</color>
+
+    <color name="blackLabelColor">#212121</color>
+
+    <color name="reviewAuthorColor">#787676</color>
+    <color name="reviewContentColor">#212121</color>
 </resources>
