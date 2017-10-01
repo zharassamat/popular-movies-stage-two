@@ -15,7 +15,7 @@ import java.util.Scanner;
 
 public final class NetworkUtils {
 
-    private static final String API_KEY = "YOUR API KEY";
+    public static final String API_KEY = "YOUR API KEY";
     
     private static final String STATIC_MOVIE_URL =
             "http://api.themoviedb.org/3/";
