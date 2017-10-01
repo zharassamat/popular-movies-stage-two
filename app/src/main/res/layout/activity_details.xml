@@ -9,13 +9,13 @@
 
     <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
+        android:layout_height="wrap_content"
         android:orientation="vertical">
 
         <RelativeLayout
             android:layout_width="match_parent"
             android:layout_height="100dp"
-            android:background="#009688"
+            android:background="@color/movie_details_header"
             android:orientation="vertical">
 
             <ImageButton
@@ -37,7 +37,7 @@
                 android:layout_centerVertical="true"
                 android:layout_toLeftOf="@id/iv_favorite"
                 android:layout_alignParentLeft="true"
-                android:textColor="#FFFFFF"
+                android:textColor="@color/white"
                 android:textSize="24sp" />
 
         </RelativeLayout>
@@ -71,19 +71,19 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginBottom="8dp"
-                    android:textColor="#000000"
+                    android:textColor="@color/blackLabelColor"
                     android:textSize="18sp" />
 
                 <TextView
                     android:id="@+id/tv_rating"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:background="#009688"
+                    android:background="@color/movie_details_header"
                     android:paddingBottom="4dp"
                     android:paddingLeft="16dp"
                     android:paddingRight="16dp"
                     android:paddingTop="4dp"
-                    android:textColor="#000000"
+                    android:textColor="@color/blackLabelColor"
                     android:textSize="16sp" />
             </LinearLayout>
 
@@ -97,7 +97,7 @@
             android:layout_marginRight="16dp"
             android:layout_marginTop="8dp"
             android:layout_marginBottom="16dp"
-            android:textColor="#000000"
+            android:textColor="@color/blackLabelColor"
             android:textSize="16sp" />
 
         <View

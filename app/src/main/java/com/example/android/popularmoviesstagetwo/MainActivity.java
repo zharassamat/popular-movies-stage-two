@@ -2,7 +2,6 @@ package com.example.android.popularmoviesstagetwo;
 
 import android.content.Intent;
 import android.database.Cursor;
-import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.v4.app.LoaderManager;
 import android.support.v4.content.AsyncTaskLoader;
@@ -10,7 +9,7 @@ import android.support.v4.content.Loader;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.GridLayoutManager;
 import android.support.v7.widget.RecyclerView;
-import android.util.Log;
+import android.util.DisplayMetrics;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
@@ -20,15 +19,19 @@ import android.widget.TextView;
 import com.example.android.popularmoviesstagetwo.data.MovieContract;
 import com.example.android.popularmoviesstagetwo.model.MovieModel;
 import com.example.android.popularmoviesstagetwo.utilities.MovieJsonUtils;
-import com.example.android.popularmoviesstagetwo.utilities.NetworkUtils;
 
-import java.net.URL;
+import org.json.JSONException;
+
 import java.util.ArrayList;
+
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
 
 public class MainActivity extends AppCompatActivity implements MovieListAdapter.ListItemClickListener, LoaderManager.LoaderCallbacks<Cursor> {
 
-    private static final String POPULAR_MOVIES = "movie/popular";
-    private static final String TOP_RATED_MOVIES = "movie/top_rated";
+    private static final String POPULAR_MOVIES = "popular";
+    private static final String TOP_RATED_MOVIES = "top_rated";
 
     private static final int MOVIE_LOADER_ID = 0;
 
@@ -55,7 +58,7 @@ public class MainActivity extends AppCompatActivity implements MovieListAdapter.
         mLoadingIndicator = (ProgressBar) findViewById(R.id.pb_loading_indicator);
         mErrorMessageDisplay = (TextView) findViewById(R.id.tv_error_message_display);
 
-        GridLayoutManager layoutManager = new GridLayoutManager(this, 2);
+        GridLayoutManager layoutManager = new GridLayoutManager(this, numberOfColumns());
 
         mMovieListView.setLayoutManager(layoutManager);
 
@@ -133,7 +136,47 @@ public class MainActivity extends AppCompatActivity implements MovieListAdapter.
     private void loadMoviesData(String movieType) {
         showMovieDataView();
 
-        new FetchMovieTask().execute(movieType);
+        mLoadingIndicator.setVisibility(View.VISIBLE);
+        mAdapter.setMovieData(null);
+
+        MoviesApp.getAPI().loadMovie(movieType).enqueue(new Callback<String>() {
+            @Override
+            public void onResponse(Call<String> call, Response<String> response) {
+                if(response.body() != null) {
+                    try {
+                        ArrayList<MovieModel> jsonMovieData = MovieJsonUtils
+                                .getMovieListFromJson(response.body());
+                        mMovieList.clear();
+                        mMovieList.addAll(jsonMovieData);
+                        mAdapter.setMovieData(mMovieList);
+                    } catch (JSONException e) {
+                        e.printStackTrace();
+                        showErrorMessage();
+                    }
+                } else {
+                    showErrorMessage();
+                }
+
+                mLoadingIndicator.setVisibility(View.INVISIBLE);
+
+            }
+            @Override
+            public void onFailure(Call<String> call, Throwable t) {
+               showErrorMessage();
+                mLoadingIndicator.setVisibility(View.INVISIBLE);
+            }
+        });
+
+    }
+
+    private int numberOfColumns() {
+        DisplayMetrics displayMetrics = new DisplayMetrics();
+        getWindowManager().getDefaultDisplay().getMetrics(displayMetrics);
+        int widthDivider = 400;
+        int width = displayMetrics.widthPixels;
+        int nColumns = width / widthDivider;
+        if (nColumns < 2) return 2;
+        return nColumns;
     }
 
     @Override
@@ -201,7 +244,7 @@ public class MainActivity extends AppCompatActivity implements MovieListAdapter.
 
         showMovieDataView();
 
-        mAdapter.setMovieData(convertCursorToList(data));
+        mAdapter.setMovieData(MovieJsonUtils.parseCursorToMovieArray(mMovieList,data));
     }
 
     @Override
@@ -209,96 +252,4 @@ public class MainActivity extends AppCompatActivity implements MovieListAdapter.
         mAdapter.setMovieData(null);
     }
 
-    private ArrayList<MovieModel> convertCursorToList(Cursor data) {
-        mMovieList.clear();
-        MovieModel movie;
-
-        try {
-            while (data.moveToNext()) {
-                int idIndex = data.getColumnIndex(MovieContract.MovieEntry._ID);
-                int movieIdIndex = data.getColumnIndex(MovieContract.MovieEntry.COLUMN_MOVIE_ID);
-                int movieNameIndex = data.getColumnIndex(MovieContract.MovieEntry.COLUMN_MOVIE_NAME);
-                int moviePosterIndex = data.getColumnIndex(MovieContract.MovieEntry.COLUMN_MOVIE_POSTER);
-                int movieRatingIndex = data.getColumnIndex(MovieContract.MovieEntry.COLUMN_MOVIE_RATING);
-                int movieReleaseDateIndex = data.getColumnIndex(MovieContract.MovieEntry.COLUMN_MOVIE_RELEASE_DATE);
-                int movieSynopsisIndex = data.getColumnIndex(MovieContract.MovieEntry.COLUMN_MOVIE_SYNOPSIS);
-                int movieThumbnailIndex = data.getColumnIndex(MovieContract.MovieEntry.COLUMN_MOVIE_THUMBNAIL);
-
-                int id = data.getInt(idIndex);
-                int movieId = data.getInt(movieIdIndex);
-                String movieName = data.getString(movieNameIndex);
-                String moviePoster = data.getString(moviePosterIndex);
-                String movieRating = data.getString(movieRatingIndex);
-                String movieReleaseDate = data.getString(movieReleaseDateIndex);
-                String movieSysopsis = data.getString(movieSynopsisIndex);
-                String movieThumbnail = data.getString(movieThumbnailIndex);
-
-                movie = new MovieModel();
-
-                movie.setMovieId(movieId);
-                movie.setOriginalTitle(movieName);
-                movie.setPosterUrl(moviePoster);
-                movie.setRating(movieRating);
-                movie.setReleaseDate(movieReleaseDate);
-                movie.setOverview(movieSysopsis);
-                movie.setThumbnailUrl(movieThumbnail);
-
-                mMovieList.add(movie);
-            }
-        } finally {
-            data.close();
-        }
-
-        return mMovieList;
-    }
-
-    public class FetchMovieTask extends AsyncTask<String, Void, ArrayList<MovieModel>> {
-
-        @Override
-        protected void onPreExecute() {
-            super.onPreExecute();
-            mLoadingIndicator.setVisibility(View.VISIBLE);
-            mAdapter.setMovieData(null);
-        }
-
-        @Override
-        protected ArrayList<MovieModel> doInBackground(String... params) {
-
-            if (params.length == 0) {
-                return null;
-            }
-
-            String location = params[0];
-            URL moviesRequestUrl = NetworkUtils.buildUrl(location);
-
-            try {
-                String jsonMovieResponse = NetworkUtils
-                        .getResponseFromHttpUrl(moviesRequestUrl);
-
-                ArrayList<MovieModel> jsonMovieData = MovieJsonUtils
-                        .getMovieListFromJson(jsonMovieResponse);
-
-                return jsonMovieData;
-
-            } catch (Exception e) {
-                e.printStackTrace();
-                return null;
-            }
-        }
-
-        @Override
-        protected void onPostExecute(ArrayList<MovieModel> moviesData) {
-            mLoadingIndicator.setVisibility(View.INVISIBLE);
-            if (moviesData != null) {
-                showMovieDataView();
-
-                mMovieList.clear();
-                mMovieList.addAll(moviesData);
-                mAdapter.setMovieData(mMovieList);
-
-            } else {
-                showErrorMessage();
-            }
-        }
-    }
 }

@@ -5,14 +5,13 @@ import android.content.Context;
 import android.content.Intent;
 import android.database.Cursor;
 import android.net.Uri;
-import android.os.AsyncTask;
+import android.os.Build;
 import android.os.Bundle;
 import android.support.v4.app.LoaderManager;
 import android.support.v4.app.ShareCompat;
 import android.support.v4.content.CursorLoader;
 import android.support.v4.content.Loader;
 import android.support.v7.app.AppCompatActivity;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuInflater;
@@ -32,8 +31,13 @@ import com.example.android.popularmoviesstagetwo.utilities.MovieJsonUtils;
 import com.example.android.popularmoviesstagetwo.utilities.NetworkUtils;
 import com.squareup.picasso.Picasso;
 
-import java.net.URL;
+import org.json.JSONException;
+
 import java.util.ArrayList;
+
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
 
 public class DetailsActivity extends AppCompatActivity implements
         LoaderManager.LoaderCallbacks<Cursor> {
@@ -68,6 +72,11 @@ public class DetailsActivity extends AppCompatActivity implements
     private int indexId = -1;
 
     private String movieTrailerUrl = null;
+
+    private ArrayList<VideoModel> mVideoModels = new ArrayList<>();
+
+    private static final String BUNDLE_EXTRA_MOVIE_KEY = "movie_key";
+    private static final String BUNDLE_EXTRA_VIDEO_LIST_KEY = "video_list_key";
 
     public static final String[] MOVIE_DETAIL_PROJECTION = {
             MovieContract.MovieEntry._ID,
@@ -114,12 +123,17 @@ public class DetailsActivity extends AppCompatActivity implements
 
         dynamicLayout = (LinearLayout) findViewById(R.id.dynamic_video_layout);
 
-        Intent intent = getIntent();
+        if (savedInstanceState == null || !savedInstanceState.containsKey(BUNDLE_EXTRA_MOVIE_KEY)) {
+            Intent intent = getIntent();
 
-        if (intent != null) {
-            if (intent.getExtras() != null) {
-                mMovie = intent.getExtras().getParcelable("movie");
+            if (intent != null) {
+                if (intent.getExtras() != null) {
+                    mMovie = intent.getExtras().getParcelable("movie");
+                }
             }
+
+        } else {
+            mMovie = savedInstanceState.getParcelable(BUNDLE_EXTRA_MOVIE_KEY);
         }
 
         if (mMovie != null) {
@@ -131,7 +145,12 @@ public class DetailsActivity extends AppCompatActivity implements
 
             Picasso.with(this).load(NetworkUtils.MOVIE_IMAGE_URL + mMovie.getThumbnailUrl()).into(mPosterImageView);
 
-            loadVideosData("movie/" + mMovie.getMovieId() + "/videos");
+            if (savedInstanceState == null || !savedInstanceState.containsKey(BUNDLE_EXTRA_VIDEO_LIST_KEY)) {
+                loadVideosData(mMovie.getMovieId() + "");
+            } else {
+                mVideoModels = savedInstanceState.getParcelableArrayList(BUNDLE_EXTRA_VIDEO_LIST_KEY);
+                showVideoDataView(mVideoModels);
+            }
 
             btnShowReviews.setOnClickListener(new View.OnClickListener() {
                 @Override
@@ -163,12 +182,21 @@ public class DetailsActivity extends AppCompatActivity implements
         getSupportLoaderManager().initLoader(ID_DETAIL_LOADER, null, this);
     }
 
+    @Override
+    public void onSaveInstanceState(Bundle outState) {
+        outState.putParcelable(BUNDLE_EXTRA_MOVIE_KEY, mMovie);
+        outState.putParcelableArrayList(BUNDLE_EXTRA_VIDEO_LIST_KEY,mVideoModels);
+        super.onSaveInstanceState(outState);
+    }
+
     private Intent createShareMovieIntent() {
         Intent shareIntent = ShareCompat.IntentBuilder.from(this)
                 .setType("text/plain")
                 .setText(movieTrailerUrl)
                 .getIntent();
-        shareIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_DOCUMENT);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            shareIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_DOCUMENT);
+        }
         return shareIntent;
     }
 
@@ -234,7 +262,39 @@ public class DetailsActivity extends AppCompatActivity implements
 
     private void loadVideosData(String videoId) {
 
-        new FetchTrailersTask().execute(videoId);
+        MoviesApp.getAPI().loadMovieTrailers(videoId).enqueue(new Callback<String>() {
+            @Override
+            public void onResponse(Call<String> call, Response<String> response) {
+                if(response.body() != null) {
+                    try {
+                        mVideoModels.clear();
+                        ArrayList<VideoModel> jsonVideoData = MovieJsonUtils
+                                .getVideoListFromJson(response.body());
+                        if (jsonVideoData != null && !jsonVideoData.isEmpty()) {
+                            mVideoModels.addAll(jsonVideoData);
+                            showVideoDataView(mVideoModels);
+                        } else {
+                            showErrorMessage();
+                        }
+                    } catch (JSONException e) {
+                        e.printStackTrace();
+                        showErrorMessage();
+                    }
+                } else {
+                    showErrorMessage();
+                }
+
+                mLoadingIndicator.setVisibility(View.INVISIBLE);
+
+            }
+            @Override
+            public void onFailure(Call<String> call, Throwable t) {
+                showErrorMessage();
+                mLoadingIndicator.setVisibility(View.INVISIBLE);
+            }
+        });
+
+
     }
 
     @Override
@@ -277,51 +337,6 @@ public class DetailsActivity extends AppCompatActivity implements
 
     }
 
-    public class FetchTrailersTask extends AsyncTask<String, Void, ArrayList<VideoModel>> {
-
-        @Override
-        protected void onPreExecute() {
-            super.onPreExecute();
-            mLoadingIndicator.setVisibility(View.VISIBLE);
-
-        }
-
-        @Override
-        protected ArrayList<VideoModel> doInBackground(String... params) {
-
-            if (params.length == 0) {
-                return null;
-            }
-
-            String location = params[0];
-            URL videoRequestUrl = NetworkUtils.buildUrl(location);
-
-            try {
-                String jsonVideoResponse = NetworkUtils
-                        .getResponseFromHttpUrl(videoRequestUrl);
-
-                ArrayList<VideoModel> jsonVideoData = MovieJsonUtils
-                        .getVideoListFromJson(jsonVideoResponse);
-
-                return jsonVideoData;
-
-            } catch (Exception e) {
-                e.printStackTrace();
-                return null;
-            }
-        }
-
-        @Override
-        protected void onPostExecute(ArrayList<VideoModel> videoData) {
-            mLoadingIndicator.setVisibility(View.GONE);
-            if (videoData != null && !videoData.isEmpty()) {
-                showVideoDataView(videoData);
-            } else {
-                showErrorMessage();
-            }
-        }
-    }
-
     private void showVideoDataView(ArrayList<VideoModel> videoModels) {
 
         vi = (LayoutInflater) getApplicationContext().getSystemService(Context.LAYOUT_INFLATER_SERVICE);
@@ -353,15 +368,6 @@ public class DetailsActivity extends AppCompatActivity implements
     }
 
     public void watchYoutubeVideo(String id) {
-        /*Intent appIntent = new Intent(Intent.ACTION_VIEW, Uri.parse("vnd.youtube:" + id));
-        Intent webIntent = new Intent(Intent.ACTION_VIEW,
-                Uri.parse("http://www.youtube.com/watch?v=" + id));
-        try {
-            startActivity(appIntent);
-        } catch (ActivityNotFoundException ex) {
-            startActivity(webIntent);
-        }*/
-
         Uri webpage = Uri.parse("http://www.youtube.com/watch?v=" + id);
 
         Intent intent = new Intent(Intent.ACTION_VIEW, webpage);

@@ -1,5 +1,8 @@
 package com.example.android.popularmoviesstagetwo.utilities;
 
+import android.database.Cursor;
+
+import com.example.android.popularmoviesstagetwo.data.MovieContract;
 import com.example.android.popularmoviesstagetwo.model.MovieModel;
 import com.example.android.popularmoviesstagetwo.model.ReviewModel;
 import com.example.android.popularmoviesstagetwo.model.VideoModel;
@@ -88,6 +91,49 @@ public class MovieJsonUtils {
         }
 
         return mReviewList;
+    }
+
+    public static ArrayList<MovieModel> parseCursorToMovieArray(ArrayList<MovieModel> movieList, Cursor data){
+        movieList.clear();
+        MovieModel movie;
+
+        try {
+            while (data.moveToNext()) {
+                int idIndex = data.getColumnIndex(MovieContract.MovieEntry._ID);
+                int movieIdIndex = data.getColumnIndex(MovieContract.MovieEntry.COLUMN_MOVIE_ID);
+                int movieNameIndex = data.getColumnIndex(MovieContract.MovieEntry.COLUMN_MOVIE_NAME);
+                int moviePosterIndex = data.getColumnIndex(MovieContract.MovieEntry.COLUMN_MOVIE_POSTER);
+                int movieRatingIndex = data.getColumnIndex(MovieContract.MovieEntry.COLUMN_MOVIE_RATING);
+                int movieReleaseDateIndex = data.getColumnIndex(MovieContract.MovieEntry.COLUMN_MOVIE_RELEASE_DATE);
+                int movieSynopsisIndex = data.getColumnIndex(MovieContract.MovieEntry.COLUMN_MOVIE_SYNOPSIS);
+                int movieThumbnailIndex = data.getColumnIndex(MovieContract.MovieEntry.COLUMN_MOVIE_THUMBNAIL);
+
+                int id = data.getInt(idIndex);
+                int movieId = data.getInt(movieIdIndex);
+                String movieName = data.getString(movieNameIndex);
+                String moviePoster = data.getString(moviePosterIndex);
+                String movieRating = data.getString(movieRatingIndex);
+                String movieReleaseDate = data.getString(movieReleaseDateIndex);
+                String movieSysopsis = data.getString(movieSynopsisIndex);
+                String movieThumbnail = data.getString(movieThumbnailIndex);
+
+                movie = new MovieModel();
+
+                movie.setMovieId(movieId);
+                movie.setOriginalTitle(movieName);
+                movie.setPosterUrl(moviePoster);
+                movie.setRating(movieRating);
+                movie.setReleaseDate(movieReleaseDate);
+                movie.setOverview(movieSysopsis);
+                movie.setThumbnailUrl(movieThumbnail);
+
+                movieList.add(movie);
+            }
+        } finally {
+            data.close();
+        }
+
+        return movieList;
     }
 
 }

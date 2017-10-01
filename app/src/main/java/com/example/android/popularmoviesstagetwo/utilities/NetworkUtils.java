@@ -16,15 +16,15 @@ import java.util.Scanner;
 public final class NetworkUtils {
 
     private static final String API_KEY = "YOUR API KEY";
-
+    
     private static final String STATIC_MOVIE_URL =
             "http://api.themoviedb.org/3/";
 
-    private static final String MOVIE_BASE_URL = STATIC_MOVIE_URL;
+    public static final String MOVIE_BASE_URL = STATIC_MOVIE_URL;
 
     public static final String MOVIE_IMAGE_URL = "http://image.tmdb.org/t/p/w342//";
 
-    final static String API_PARAM = "api_key";
+    public final static String API_PARAM = "api_key";
 
     public static URL buildUrl(String locationQuery) {
         Uri builtUri = Uri.parse(MOVIE_BASE_URL + locationQuery).buildUpon()
